@@ -14,10 +14,9 @@
 |*  You should have received a copy of the GNU General Public License       *|
 |*  along with this program.  If not, see <http://www.gnu.org/licenses/>.   *|
 \*__________________________________________________________________________*/
+
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace BlizzetaZero.Kernel
 {
@@ -32,16 +31,12 @@ namespace BlizzetaZero.Kernel
 
     public class Channel
     {
-        private Irc parent;
+        private List<Ban> banlist = new List<Ban> ( );
         private string channel, key, modes, topic;
-        private List<Ban> banlist = new List<Ban>();
-        private List<User> userlist = new List<User>();
+        private Irc parent;
+        private List<User> userlist = new List<User> ( );
 
-        public string Name { get { return channel; } }
-        public string Topic { get { return topic; } }
-        public List<User> Userlist { get { return userlist; } }
-
-        public Channel(Irc Parent, string Name, string Key)
+        public Channel ( Irc Parent, string Name, string Key )
         {
             this.parent = Parent;
             this.channel = Name;
@@ -61,132 +56,139 @@ namespace BlizzetaZero.Kernel
             this.parent.OnTopicChange += parent_OnTopicChange;
         }
 
-        void parent_OnTopicChange( User from, Channel channel, string newtopic )
+        public string Name { get { return channel; } }
+
+        public string Topic { get { return topic; } }
+
+        public List<User> Userlist { get { return userlist; } }
+
+        public void Join ( )
         {
-            topic = newtopic;
-            IrcReply.FormatMessage ( string.Format ( "{0} has changed topic in {1} :: {2}", from.Nick, this.channel, newtopic ), ConsoleColor.DarkCyan );
+            parent.Raw ( IrcCommands.Join ( channel, key ) );
         }
 
-        void parent_OnServerQuit( User from, Channel channel, string target, string message )
+        public void Kick ( string nick, string reason )
         {
-            userlist.Remove ( from );
-            IrcReply.FormatMessage ( string.Format ( "{0} {1}@{2} has disconnected {{ {3} }}", from.Nick, from.Username, from.Host, message ), ConsoleColor.DarkRed );
+            parent.Raw ( IrcCommands.Kick ( channel, nick, reason ) );
         }
 
-        void parent_OnSendToChannel( string to, string message )
+        public void Mode ( string Modes )
         {
-            this.parent.Writer.SendMessage ( IrcCommands.Privmsg ( to, message ) );
+            parent.Raw ( IrcCommands.Mode ( channel, Modes ) );
         }
 
-        void parent_OnPublicNotice( User from, string to, string message )
+        public void Part ( string reason )
         {
-            IrcReply.FormatMessage ( string.Format ( "[{0}] :: [{1}] -> {2} ", this.channel, from.Nick, message ), ConsoleColor.DarkMagenta );
+            parent.Raw ( IrcCommands.Part ( channel, reason ) );
         }
 
-        void parent_OnPublicMessage( User from, string to, string message )
+        public void SendAction ( string message )
         {
-            string[] msg = message.Split(' ');
-            
-            // Parse as a command
-            if(msg[0].StartsWith("-"))
-            {
-                IrcReply.FormatMessage ( string.Format ( "[{0}] <{1}> {2}", this.channel, from.Nick, message ), ConsoleColor.Magenta );
-
-                string command = msg[0].Substring ( 1 );
-                string firstArgument = msg[1];
-                object[] arguments = msg.Length > 2 ? string.Join ( " ", msg, 2, msg.Length - 2 ).Split ( ' ' ) : new object[] { };
-
-                parent.IssueCommand ( this, from, command, firstArgument, arguments );
-            }
-            else if (msg[0].StartsWith("+"))
-            {
-                IrcReply.FormatMessage ( string.Format ( "[{0}] <{1}> {2}", this.channel, from.Nick, message ), ConsoleColor.Yellow );
-                string command = msg[0].Substring ( 1 );
-                object[] arguments = msg.Length > 1 ? string.Join ( " ", msg, 1, msg.Length - 1 ).Split ( ' ' ) : new object[] { };
-                CoreCommands.Execute (command,this.parent, this, from.Nick, arguments );
-            }
-            else // Just display the message in a specified colour
-                IrcReply.FormatMessage ( string.Format ( "[{0}] <{1}> {2}", this.channel, from.Nick, message ), ConsoleColor.Green );
+            parent.Raw ( IrcCommands.Action ( channel, message ) );
         }
 
-        void parent_OnPublicAction( User from, string to, string message )
+        public void SendMessage ( string message )
         {
-            IrcReply.FormatMessage ( string.Format ( "[{0}] * {1} {2}", this.channel, from.Nick, message ), ConsoleColor.DarkCyan );
+            parent.Raw ( IrcCommands.Privmsg ( channel, message ) );
         }
 
-        void parent_OnNickChange( User from, string newnick )
+        public void SendNotice ( string message )
         {
-            IrcReply.FormatMessage ( string.Format ( "{0} is now known as {1}", from.Nick, newnick ), ConsoleColor.DarkGray );
+            parent.Raw ( IrcCommands.Notice ( channel, message ) );
         }
 
-        void parent_OnChannelUserList( Channel channel, string[] list )
+        public override string ToString ( )
         {
-            for ( int i = 0; i < list.Length; i++ )
-                userlist.Add ( new User ( list[i] ) );
+            return this.channel;
         }
 
-        void parent_OnChannelPart( User from, Channel channel, string target, string message )
-        {
-            userlist.Remove ( from );
-            IrcReply.FormatMessage ( string.Format ( "{0} has left {1} {{ {2} }}", from.Nick, this.channel, message ), ConsoleColor.DarkRed );
-        }
-
-        void parent_OnChannelMode( User from, Channel channel, string target, string message )
-        {
-            IrcReply.FormatMessage ( string.Format ( "{0} sets mode {1} in {2}", from.Nick, message, this.channel ), ConsoleColor.Gray );
-        }
-
-        void parent_OnChannelKick( User from, Channel channel, string target, string message )
-        {
-            userlist.Remove ( new User ( target ) );
-            IrcReply.FormatMessage ( string.Format("{0} has kicked {1} from {2} {{ {3} }}", from.Nick, target, this.channel, message), ConsoleColor.Red );
-        }
-
-        void parent_OnChannelJoin( User from, Channel channel, string target, string message )
+        private void parent_OnChannelJoin ( User from, Channel channel, string target, string message )
         {
             userlist.Add ( from );
             IrcReply.FormatMessage ( string.Format ( "{0} {1}@{2} has joined {3}", from.Nick, from.Username, from.Host, this.channel ), ConsoleColor.Cyan );
             parent.Writer.SendMessage ( IrcCommands.Notice ( from.Nick, string.Format ( "Welcome to {0}, {1}! Enjoy your stay! :3", this.channel, from.Nick ) ) );
         }
 
-        public override string ToString()
+        private void parent_OnChannelKick ( User from, Channel channel, string target, string message )
         {
-            return this.channel;
+            userlist.Remove ( new User ( target ) );
+            IrcReply.FormatMessage ( string.Format ( "{0} has kicked {1} from {2} {{ {3} }}", from.Nick, target, this.channel, message ), ConsoleColor.Red );
         }
 
-        public void Join()
+        private void parent_OnChannelMode ( User from, Channel channel, string target, string message )
         {
-            parent.Raw(IrcCommands.Join(channel, key));
+            IrcReply.FormatMessage ( string.Format ( "{0} sets mode {1} in {2}", from.Nick, message, this.channel ), ConsoleColor.Gray );
         }
 
-        public void Part(string reason)
+        private void parent_OnChannelPart ( User from, Channel channel, string target, string message )
         {
-            parent.Raw(IrcCommands.Part(channel, reason));
+            userlist.Remove ( from );
+            IrcReply.FormatMessage ( string.Format ( "{0} has left {1} {{ {2} }}", from.Nick, this.channel, message ), ConsoleColor.DarkRed );
         }
 
-        public void Kick(string nick, string reason)
+        private void parent_OnChannelUserList ( Channel channel, string[] list )
         {
-            parent.Raw(IrcCommands.Kick(channel, nick, reason));
+            for ( int i = 0; i < list.Length; i++ )
+                userlist.Add ( new User ( list[ i ] ) );
         }
 
-        public void Mode(string Modes)
+        private void parent_OnNickChange ( User from, string newnick )
         {
-            parent.Raw(IrcCommands.Mode(channel, Modes));
+            IrcReply.FormatMessage ( string.Format ( "{0} is now known as {1}", from.Nick, newnick ), ConsoleColor.DarkGray );
         }
 
-        public void SendMessage(string message)
+        private void parent_OnPublicAction ( User from, string to, string message )
         {
-            parent.Raw(IrcCommands.Privmsg(channel, message));
+            message = message.Substring ( " ACTION ".Length );
+            IrcReply.FormatMessage ( string.Format ( "[{0}] * {1} {2}", this.channel, from.Nick, message.Trim ( Constants.CtcpChar ), ConsoleColor.DarkCyan ) );
         }
 
-        public void SendNotice(string message)
+        private void parent_OnPublicMessage ( User from, string to, string message )
         {
-            parent.Raw(IrcCommands.Notice(channel, message));
+            string[] msg = message.Split ( ' ' );
+
+            // Parse as a command
+            if ( msg[ 0 ].StartsWith ( "-" ) )
+            {
+                // -ExternalCommand Params
+                IrcReply.FormatMessage ( string.Format ( "[{0}] <{1}> {2}", this.channel, from.Nick, message ), ConsoleColor.Magenta );
+
+                string command = msg[ 0 ].Substring ( 1 );
+                object[] arguments = msg.Length > 1 ? string.Join ( " ", msg, 1, msg.Length - 1 ).Split ( ' ' ) : new object[] { };
+
+                parent.IssueCommand ( this, from, command, arguments );
+            }
+            else if ( msg[ 0 ].StartsWith ( "+" ) )
+            {
+                IrcReply.FormatMessage ( string.Format ( "[{0}] <{1}> {2}", this.channel, from.Nick, message ), ConsoleColor.Yellow );
+                string command = msg[ 0 ].Substring ( 1 );
+                object[] arguments = msg.Length > 0 ? string.Join ( " ", msg, 1, msg.Length - 1 ).Split ( ' ' ) : new object[] { };
+                CoreCommands.Execute ( command, this.parent, this, from.Nick, arguments );
+            }
+            else // Just display the message in a specified colour
+                IrcReply.FormatMessage ( string.Format ( "[{0}] <{1}> {2}", this.channel, from.Nick, message ), ConsoleColor.Green );
         }
 
-        public void SendAction(string message)
+        private void parent_OnPublicNotice ( User from, string to, string message )
         {
-            parent.Raw(IrcCommands.Action(channel, message));
+            IrcReply.FormatMessage ( string.Format ( "[{0}] :: [{1}] -> {2} ", this.channel, from.Nick, message ), ConsoleColor.DarkMagenta );
+        }
+
+        private void parent_OnSendToChannel ( string to, string message )
+        {
+            this.parent.Writer.SendMessage ( IrcCommands.Privmsg ( to, message ) );
+        }
+
+        private void parent_OnServerQuit ( User from, Channel channel, string target, string message )
+        {
+            userlist.Remove ( from );
+            IrcReply.FormatMessage ( string.Format ( "{0} {1}@{2} has disconnected {{ {3} }}", from.Nick, from.Username, from.Host, message ), ConsoleColor.DarkRed );
+        }
+
+        private void parent_OnTopicChange ( User from, Channel channel, string newtopic )
+        {
+            topic = newtopic;
+            IrcReply.FormatMessage ( string.Format ( "{0} has changed topic in {1} :: {2}", from.Nick, this.channel, newtopic ), ConsoleColor.DarkCyan );
         }
     }
 }

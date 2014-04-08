@@ -14,10 +14,6 @@
 |*  You should have received a copy of the GNU General Public License       *|
 |*  along with this program.  If not, see <http://www.gnu.org/licenses/>.   *|
 \*__________________________________________________________________________*/
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace BlizzetaZero.Kernel
 {
@@ -25,28 +21,30 @@ namespace BlizzetaZero.Kernel
     {
         private string nick, host, username;
 
-        public string Nick { get { return nick; } }
-        public string Host { get { return host; } }
-        public string Username { get { return username; } }
-
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="hostmask"></param>
-        public User(string hostmask)
+        public User ( string hostmask )
         {
-            string[] hm = hostmask.Split('!');
-            string[] uh = hm[1].Split('@');
-            this.nick = hm[0];
-            this.username = uh[0];
-            this.host = uh[1];
+            string[] hm = hostmask.Split ( '!' );
+            string[] uh = hm[ 1 ].Split ( '@' );
+            this.nick = hm[ 0 ];
+            this.username = uh[ 0 ];
+            this.host = uh[ 1 ];
         }
 
-        public static User GetUser( Irc server, string nick )
+        public string Host { get { return host; } }
+
+        public string Nick { get { return nick; } }
+
+        public string Username { get { return username; } }
+
+        public static User GetUser ( Irc server, string nick )
         {
             WhoInfo wi = WhoInfo.GetUser ( server, nick );
 
-            return new User (wi.ToString());
+            return new User ( wi.ToString ( ) );
         }
     }
 }

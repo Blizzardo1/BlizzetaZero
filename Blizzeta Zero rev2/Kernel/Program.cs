@@ -14,21 +14,12 @@
 |*  You should have received a copy of the GNU General Public License       *|
 |*  along with this program.  If not, see <http://www.gnu.org/licenses/>.   *|
 \*__________________________________________________________________________*/
+
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
 
 namespace BlizzetaZero.Kernel
 {
-    using RFC1459;
-    using Exceptions;
-
     /*
      * I will be the very best, Like no one ever was.
      * To catch them is my real test.
@@ -45,35 +36,35 @@ namespace BlizzetaZero.Kernel
 
     public class Program
     {
-        private static void SetCharSet()
+        private static void irc_OnMotd ( string data )
         {
-            Console.OutputEncoding = Encoding.UTF8;
-            Console.WriteLine("Output encoding now changed to {0}", Console.OutputEncoding.EncodingName);
+            IrcReply.FormatMessage ( data, ConsoleColor.Yellow );
         }
 
-        static void Main(string[] args)
+        private static void Main ( string[] args )
         {
             Console.WindowWidth += 60;
 
-            CoreCommands.IncludeBuiltInCommands ();
-            SetCharSet();
-            Irc irc = new Irc("BlizzetaZero", "Blizzeta Zero Bot 7.0", "Blizzeta", "#noname");
-            
+            CoreCommands.IncludeBuiltInCommands ( );
+            SetCharSet ( );
+            Irc irc = new Irc ( "BlizzetaZero", "Blizzeta Zero Bot 7.0", "Blizzeta", "#Blizzeta" );
+
             try
             {
                 irc.Colour = ConsoleColor.Green;
                 irc.OnMotd += irc_OnMotd;
-                irc.Connect("irc.ringoflightning.net", 6667);
+                irc.Connect ( "irc.ringoflightning.net" );
             }
-            catch (Exception e)
+            catch ( Exception e )
             {
-                Console.WriteLine(e.Message);
+                Console.WriteLine ( e.Message );
             }
         }
 
-        static void irc_OnMotd(string data)
+        private static void SetCharSet ( )
         {
-            IrcReply.FormatMessage(data, ConsoleColor.Yellow);
+            Console.OutputEncoding = Encoding.UTF8;
+            Console.WriteLine ( "Output encoding now changed to {0}", Console.OutputEncoding.EncodingName );
         }
     }
 }

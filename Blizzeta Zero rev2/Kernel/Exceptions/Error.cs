@@ -1,34 +1,28 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Serialization;
-using System.Text;
 
 namespace BlizzetaZero.Kernel.Exceptions
 {
     [Serializable]
     public class Error : Exception
     {
-        public Error()
-        {
-
-        }
-        
-        public Error(string message)
-            : base(message)
+        public Error ( )
         {
         }
 
-        public Error(string message, Exception inner)
-            : base(message, inner)
+        public Error ( string message )
+            : base ( message )
         {
         }
 
-        protected Error(SerializationInfo info, StreamingContext context)
-            : base(info, context)
+        public Error ( string message, Exception inner )
+            : base ( message, inner )
         {
+        }
 
+        protected Error ( SerializationInfo info, StreamingContext context )
+            : base ( info, context )
+        {
         }
     }
-
 }

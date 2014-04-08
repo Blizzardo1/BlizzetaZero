@@ -14,13 +14,11 @@
 |*  You should have received a copy of the GNU General Public License       *|
 |*  along with this program.  If not, see <http://www.gnu.org/licenses/>.   *|
 \*__________________________________________________________________________*/
+
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 
 namespace BlizzetaZero.Kernel
 {
@@ -29,35 +27,35 @@ namespace BlizzetaZero.Kernel
         private readonly TcpListener listener;
         private readonly string userID;
 
-        public Ident(string userID)
+        public Ident ( string userID )
         {
             this.userID = userID;
-            listener = new TcpListener(IPAddress.Any, 113);
+            listener = new TcpListener ( IPAddress.Any, 113 );
         }
 
-        public void InitServer()
+        public void InitServer ( )
         {
             try
             {
-                listener.Start();
-                TcpClient client = listener.AcceptTcpClient();
-                listener.Stop();
-                StreamReader reader = new StreamReader(client.GetStream());
-                StreamWriter writer = new StreamWriter(client.GetStream());
-                string s = reader.ReadLine();
+                listener.Start ( );
+                TcpClient client = listener.AcceptTcpClient ( );
+                listener.Stop ( );
+                StreamReader reader = new StreamReader ( client.GetStream ( ) );
+                StreamWriter writer = new StreamWriter ( client.GetStream ( ) );
+                string s = reader.ReadLine ( );
 
-                IrcReply.FormatMessage(string.Format("Fetched Ident! Ident is {0}. Sending a reply now...", s), ConsoleColor.Yellow);
-                writer.SendMessage("{0} : USERID: UNIX : {1}", s, userID);
-                IrcReply.FormatMessage("Sent!", ConsoleColor.Green);
-                IrcReply.FormatMessage("Disconnecting from {{ Ident }}", ConsoleColor.Yellow);
+                IrcReply.FormatMessage ( string.Format ( "Fetched Ident! Ident is {0}. Sending a reply now...", s ), ConsoleColor.Yellow );
+                writer.SendMessage ( "{0} : USERID: UNIX : {1}", s, userID );
+                IrcReply.FormatMessage ( "Sent!", ConsoleColor.Green );
+                IrcReply.FormatMessage ( "Disconnecting from {{ Ident }}", ConsoleColor.Yellow );
             }
-            catch (SocketException se)
+            catch ( SocketException se )
             {
-                IrcReply.FormatMessage(se.Message, ConsoleColor.Red, true);
+                IrcReply.FormatMessage ( se.Message, ConsoleColor.Red, true );
             }
-            catch (Exception ex)
+            catch ( Exception ex )
             {
-                IrcReply.FormatMessage(ex.Message, ConsoleColor.Red, true);
+                IrcReply.FormatMessage ( ex.Message, ConsoleColor.Red, true );
             }
         }
     }

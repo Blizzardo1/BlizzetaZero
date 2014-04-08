@@ -14,13 +14,65 @@
 |*  You should have received a copy of the GNU General Public License       *|
 |*  along with this program.  If not, see <http://www.gnu.org/licenses/>.   *|
 \*__________________________________________________________________________*/
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace BlizzetaZero.RFC1459
 {
+    public enum Colors : int
+    {
+        White = 0,
+        Black = 1,
+        Blue = 2,
+        Green = 3,
+        Red = 4,
+        Maroon = 5,
+        Purple = 6,
+        Orange = 7,
+        Yellow = 8,
+        LightGreen = 9,
+        DarkCyan = 10,
+        Cyan = 11,
+        Royale = 12,
+        Magenta = 13,
+        DarkGray = 14,
+        Gray = 15
+    };
+
+    public enum ReceiveType : int
+    {
+        Login,
+        Info,
+        Motd,
+        Name,
+        Who,
+        List,
+        BanList,
+        Topic,
+        TopicChange,
+        WhoIs,
+        WhoWas,
+        NickChange,
+        UserMode,
+        ChannelMode,
+        ChannelModeChange,
+        ErrorMessage,
+        Unknown,
+        Error,
+        CtcpRequest,
+        CtcpReply,
+        Invite,
+        Join,
+        Kick,
+        Part,
+        UserModeChange,
+        Quit,
+        QueryMessage,
+        QueryNotice,
+        QueryAction,
+        ChannelAction,
+        ChannelNotice,
+        ChannelMessage,
+    }
+
     public enum ReplyCode : int
     {
         ERR_UNKNOWNCODE = 000,
@@ -151,51 +203,14 @@ namespace BlizzetaZero.RFC1459
         RPL_NOUSERS = 395,          // ":Nobody logged in"
     }
 
-    public enum ReceiveType : int
-    {
-        Login,
-        Info,
-        Motd,
-        Name,
-        Who,
-        List,
-        BanList,
-        Topic,
-        TopicChange,
-        WhoIs,
-        WhoWas,
-        NickChange,
-        UserMode,
-        ChannelMode,
-        ChannelModeChange,
-        ErrorMessage,
-        Unknown,
-        Error,
-        CtcpRequest,
-        CtcpReply,
-        Invite,
-        Join,
-        Kick,
-        Part,
-        UserModeChange,
-        Quit,
-        QueryMessage,
-        QueryNotice,
-        QueryAction,
-        ChannelAction,
-        ChannelNotice,
-        ChannelMessage,
-
-    }
-
     public class Constants
     {
-        public const char CtcpChar = '\x1';
         public const char Bold = '\x2';
         public const char Color = '\x3';
-        public const char Reverse = '\x16';
-        public const char Normal = '\xf';
-        public const char Underline = '\x1f';
+        public const char CtcpChar = '\x1';
         public const char CtcpQuoteChar = '\x20';
+        public const char Normal = '\xf';
+        public const char Reverse = '\x16';
+        public const char Underline = '\x1f';
     }
 }

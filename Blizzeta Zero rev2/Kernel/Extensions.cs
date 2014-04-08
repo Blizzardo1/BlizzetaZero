@@ -14,24 +14,23 @@
 |*  You should have received a copy of the GNU General Public License       *|
 |*  along with this program.  If not, see <http://www.gnu.org/licenses/>.   *|
 \*__________________________________________________________________________*/
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace BlizzetaZero.Kernel
 {
     public static class Extensions
     {
-        public static void SendMessage(this System.IO.StreamWriter w, string text, params object[] args)
+        public static string[] NonZero ( this string[] arr )
         {
-            w.WriteLine(text, args);
-            w.Flush();
+            if ( arr.Length > 1 )
+                return string.Join ( " ", arr, 1, arr.Length - 1 ).Split ( ' ' ); // Do not include the first in a Zero-Based index; [0]
+            else
+                return arr; // Length is not more than one in a Zero-Based index; [0]
         }
 
-        public static string[] NonZero(this string[] arr)
+        public static void SendMessage ( this System.IO.StreamWriter w, string text, params object[] args )
         {
-            return string.Join ( " ", arr, 1, arr.Length - 1 ).Split(' ');
+            w.WriteLine ( text, args );
+            w.Flush ( );
         }
     }
 }

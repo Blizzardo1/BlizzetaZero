@@ -14,130 +14,56 @@
 |*  You should have received a copy of the GNU General Public License       *|
 |*  along with this program.  If not, see <http://www.gnu.org/licenses/>.   *|
 \*__________________________________________________________________________*/
+
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 
 namespace BlizzetaZero.Kernel
 {
-    public class ProductKey
-    {
-
-        public static class KeyCipher
-        {
-            // This constant string is used as a "salt" value for the PasswordDeriveBytes function calls.
-            // This size of the IV (in bytes) must = (keysize / 8).  Default keysize is 256, so the IV must be
-            // 32 bytes long.  Using a 16 character string here gives us 32 bytes when converted to a byte array.
-            private const string initVector = "tu89geji340t89u2";
-
-            // This constant is used to determine the keysize of the encryption algorithm.
-            private const int keysize = 256;
-
-            public static string Encrypt( string plainText, string passPhrase )
-            {
-                byte[] initVectorBytes = Encoding.UTF8.GetBytes ( initVector );
-                byte[] plainTextBytes = Encoding.UTF8.GetBytes ( plainText );
-                PasswordDeriveBytes password = new PasswordDeriveBytes ( passPhrase, null );
-                byte[] keyBytes = password.GetBytes ( keysize / 8 );
-                RijndaelManaged symmetricKey = new RijndaelManaged ();
-                symmetricKey.Mode = CipherMode.CBC;
-                ICryptoTransform encryptor = symmetricKey.CreateEncryptor ( keyBytes, initVectorBytes );
-                MemoryStream memoryStream = new MemoryStream ();
-                CryptoStream cryptoStream = new CryptoStream ( memoryStream, encryptor, CryptoStreamMode.Write );
-                cryptoStream.Write ( plainTextBytes, 0, plainTextBytes.Length );
-                cryptoStream.FlushFinalBlock ();
-                byte[] cipherTextBytes = memoryStream.ToArray ();
-                memoryStream.Close ();
-                cryptoStream.Close ();
-                return Convert.ToBase64String ( cipherTextBytes );
-            }
-
-            public static string Decrypt( string cipherText, string passPhrase )
-            {
-                byte[] initVectorBytes = Encoding.ASCII.GetBytes ( initVector );
-                byte[] cipherTextBytes = Convert.FromBase64String ( cipherText );
-                PasswordDeriveBytes password = new PasswordDeriveBytes ( passPhrase, null );
-                byte[] keyBytes = password.GetBytes ( keysize / 8 );
-                RijndaelManaged symmetricKey = new RijndaelManaged ();
-                symmetricKey.Mode = CipherMode.CBC;
-                ICryptoTransform decryptor = symmetricKey.CreateDecryptor ( keyBytes, initVectorBytes );
-                MemoryStream memoryStream = new MemoryStream ( cipherTextBytes );
-                CryptoStream cryptoStream = new CryptoStream ( memoryStream, decryptor, CryptoStreamMode.Read );
-                byte[] plainTextBytes = new byte[cipherTextBytes.Length];
-                int decryptedByteCount = cryptoStream.Read ( plainTextBytes, 0, plainTextBytes.Length );
-                memoryStream.Close ();
-                cryptoStream.Close ();
-                return Encoding.UTF8.GetString ( plainTextBytes, 0, decryptedByteCount );
-            }
-        }
-
-        private string productID;
-
-        public string ProductID { get { return productID; } }
-
-        public static ProductKey GenerateProductKey( string nick, string channel )
-        {
-            DateTime dt = DateTime.Now;
-            string data = string.Format ( "{0}:{1}:{2}", nick, channel, dt.ToBinary () );
-
-            return new ProductKey () { productID = KeyCipher.Encrypt ( data, "blizzetazero70iamopensourcemadebyblizzardo1dontabuse(c)2014blizzardo1" ) };
-        }
-
-        public static bool ActivateKey( string key, out string[] decrypted )
-        {
-            string[] data = KeyCipher.Decrypt ( key, "blizzetazero70iamopensourcemadebyblizzardo1dontabuse(c)2014blizzardo1" ).Split ( ':' );
-            if ( data.Length == 3 )
-            {
-                IrcReply.FormatMessage ( string.Format ( "Nick: {0}\r\nChannel: {1}\r\nDate: {2:dddd MMMM dd, yyyy} at {2:HH:mm:ss}", data[0], data[1], DateTime.FromBinary ( long.Parse ( data[2] ) ) ), ConsoleColor.DarkGray, true );
-                decrypted = data;
-                return true;
-            }
-
-            decrypted = null;
-            return false;
-        }
-    }
-
     public class CoreCommands
     {
-        private static Dictionary<string, Func<Irc, string, string, object[], int>> commands = new Dictionary<string, Func<Irc, string, string, object[], int>> ();
-        public static Dictionary<string, Func<Irc, string, string, object[], int>> Commands { get { return commands; } }
-
-        private static string userdb = Irc.StartupPath + "\\User.db";
-        public static string UserDB { get { return userdb; } }
+        private static Dictionary<string, Func<Irc, string, string, object[], int>> commands = new Dictionary<string, Func<Irc, string, string, object[], int>> ( );
 
         private static bool ignoreBan = false, ignoreSay = false, ignoreKick = false;
+
         private static int overridekey = 0;
 
-        public static void Execute( string command, Irc irc, Channel chan, string callee, object[] args )
-        {
-            Func<Irc, string, string, object[], int> func = commands[command];
-            func.Invoke ( irc, chan.Name, callee, args );
-        }
+        private static string userdb = Irc.StartupPath + "\\User.db";
 
-        public static void AddCommand( string command, Func<Irc, string, string, object[], int> function )
+        public static Dictionary<string, Func<Irc, string, string, object[], int>> Commands { get { return commands; } }
+
+        public static string UserDB { get { return userdb; } }
+
+        public static void AddCommand ( string command, Func<Irc, string, string, object[], int> function )
         {
             IrcReply.FormatMessage ( string.Format ( "Including {0}", command ), ConsoleColor.Green );
             commands.Add ( command, function );
         }
 
-        public static void ReleaseCommand( string command )
+        public static string CheckS ( string name )
         {
-            IrcReply.FormatMessage ( string.Format ( "Excluding {0}", command ), ConsoleColor.DarkRed );
-            commands.Remove ( command );
+            return name.EndsWith ( "s" ) ? name + "'" : name + "'s";
         }
 
-        public static void IncludeBuiltInCommands()
+        public static void Execute ( string command, Irc irc, Channel chan, string callee, object[] args )
+        {
+            Func<Irc, string, string, object[], int> func = commands[ command ];
+            if ( chan != null )
+                func.Invoke ( irc, chan.Name, callee, args );
+            else
+                func.Invoke ( irc, string.Empty, callee, args );
+        }
+
+        public static void IncludeBuiltInCommands ( )
         {
             // act
             AddCommand ( "act", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                string msg = string.Join ( " ", o, 2, o.Length - 2 );
+                string msg = string.Join ( " ", o as string[], 2, o.Length - 2 );
 
                 i.SendAction ( c, msg );
                 i.Format ( "{0} sent {1} this action: {2}", ConsoleColor.DarkMagenta, n, c, msg );
@@ -153,7 +79,7 @@ namespace BlizzetaZero.Kernel
                 string Formatted = string.Empty;
 
                 if ( len > 0 )
-                    cmd = o[0] as string;
+                    cmd = o[ 0 ] as string;
                 else
                 {
                     i.SendMessage ( n, "What do you want me to do again with Ajoin?" );
@@ -162,7 +88,6 @@ namespace BlizzetaZero.Kernel
 
                 if ( o.Length > 1 )
                 {
-
                     Formatted = string.Format ( "AJOIN {0} {1}", cmd, c );
                 }
                 else
@@ -200,7 +125,7 @@ namespace BlizzetaZero.Kernel
             // away
             AddCommand ( "away", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                string amsg = string.Join ( " ", o );
+                string amsg = string.Join ( " ", o as string[] );
                 i.Raw ( RFC1459.IrcCommands.Away ( amsg ) );
                 return 0;
             } ) );
@@ -210,8 +135,8 @@ namespace BlizzetaZero.Kernel
             {
                 if ( !ignoreBan )
                 {
-                    i.Raw ( RFC1459.IrcCommands.Ban ( c, o[0] as string ) );
-                    commands["kick"].Invoke ( i, c, n, o );
+                    i.Raw ( RFC1459.IrcCommands.Ban ( c, o[ 0 ] as string ) );
+                    commands[ "kick" ].Invoke ( i, c, n, o );
                 }
                 else
                     i.Format ( "Ignoring ban called by {0}", ConsoleColor.Red, n );
@@ -221,14 +146,14 @@ namespace BlizzetaZero.Kernel
             // check [permission]
             AddCommand ( "check", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                Dictionary<string, Func<int>> subcmd = new Dictionary<string, Func<int>> ();
-                subcmd.Add ( "permission", new Func<int> ( () =>
+                Dictionary<string, Func<int>> subcmd = new Dictionary<string, Func<int>> ( );
+                subcmd.Add ( "permission", new Func<int> ( ( ) =>
                 {
-                    // TODO: Add permissions check 
+                    // TODO: Add permissions check
                     return 0;
                 } ) );
 
-                subcmd.Add ( "time", new Func<int> ( () =>
+                subcmd.Add ( "time", new Func<int> ( ( ) =>
                 {
                     // TODO: Add configuration for callee
                     DateTime dt = DateTime.Now;
@@ -236,7 +161,7 @@ namespace BlizzetaZero.Kernel
                     i.GetChannel ( c ).SendMessage ( string.Format ( "{0} {1:dddd MMMM dd, yyyy} at {1:HH:mm:ss}", CheckS ( i.Owner ), dt ) );
                     return 0;
                 } ) );
-                subcmd.Add ( "uptime", new Func<int> ( () =>
+                subcmd.Add ( "uptime", new Func<int> ( ( ) =>
                 {
                     i.Format ( "Uptime: {0}", ConsoleColor.DarkGreen );
                     i.GetChannel ( c ).SendMessage ( string.Format ( "{0}, I've been up for {1} {2}, {3} {4}, {5} {6}, and {7} {8}" ) );
@@ -248,30 +173,30 @@ namespace BlizzetaZero.Kernel
             // clear
             AddCommand ( "clear", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                Console.Clear ();
+                Console.Clear ( );
                 return 0;
             } ) );
             // createdb
             AddCommand ( "createdb", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                Dictionary<string, Func<int>> subcmd = new Dictionary<string, Func<int>> ();
+                Dictionary<string, Func<int>> subcmd = new Dictionary<string, Func<int>> ( );
 
-                subcmd.Add ( "activate", new Func<int> ( () =>
+                subcmd.Add ( "activate", new Func<int> ( ( ) =>
                 {
-                    string key = o[1] as string;
+                    string key = o[ 1 ] as string;
                     string[] decryptedKey;
 
                     if ( ProductKey.ActivateKey ( key, out decryptedKey ) )
                     {
                         if ( !File.Exists ( userdb ) )
                         {
-                            XmlDocument xDoc = new XmlDocument ();
+                            XmlDocument xDoc = new XmlDocument ( );
                             XmlNode xDeclaration = xDoc.CreateXmlDeclaration ( "1.0", "UTF-8", "yes" );
                             XmlNode xRoot = xDoc.CreateElement ( "Users" );
                             xDoc.AppendChild ( xDeclaration );
                             xDoc.AppendChild ( xRoot );
                             xDoc.Save ( userdb );
-                            i.GetChannel ( c ).SendMessage ( string.Format ( "A new Database has been created and activated, thanks to {0} in {1} on {2: dddd MMMM dd, yyyy} at {2:hh:mm:ss tt}!", decryptedKey[0], decryptedKey[1], DateTime.FromBinary ( long.Parse ( decryptedKey[2] ) ) ) );
+                            i.GetChannel ( c ).SendMessage ( string.Format ( "A new Database has been created and activated, thanks to {0} in {1} on {2: dddd MMMM dd, yyyy} at {2:hh:mm:ss tt}!", decryptedKey[ 0 ], decryptedKey[ 1 ], DateTime.FromBinary ( long.Parse ( decryptedKey[ 2 ] ) ) ) );
                         }
                         else
                             i.GetChannel ( c ).SendMessage ( "A database already exists and has been authenticated by me. :( If my Userbase is corrupt or you would like to clear it, please do +createdb override" );
@@ -282,9 +207,9 @@ namespace BlizzetaZero.Kernel
 
                 //          0        1
                 // createdb override key
-                subcmd.Add ( "override", new Func<int> ( () =>
+                subcmd.Add ( "override", new Func<int> ( ( ) =>
                 {
-                    int key = ( new Random () ).Next ( 10000, int.MaxValue );
+                    int key = ( new Random ( ) ).Next ( 10000, int.MaxValue );
                     if ( o.Length < 2 )
                     {
                         overridekey = key;
@@ -293,14 +218,14 @@ namespace BlizzetaZero.Kernel
                     }
                     else
                     {
-                        if ( int.Parse ( o[1] as string ) == overridekey )
+                        if ( int.Parse ( o[ 1 ] as string ) == overridekey )
                         {
                             File.Delete ( userdb );
                             i.SendMessage ( i.Owner, "Database has been destroyed." );
                         }
                         else
                         {
-                            i.SendMessage ( i.Owner, string.Format ( "{0} has attempted to override the database! Their code was {1}, real code is {2}", n, o[1] as string, overridekey ) );
+                            i.SendMessage ( i.Owner, string.Format ( "{0} has attempted to override the database! Their code was {1}, real code is {2}", n, o[ 1 ] as string, overridekey ) );
                         }
                     }
 
@@ -310,7 +235,7 @@ namespace BlizzetaZero.Kernel
                 if ( o.Length > 0 )
                     try
                     {
-                        subcmd[o[0] as string].Invoke ();
+                        subcmd[ o[ 0 ] as string ].Invoke ( );
                     }
                     catch ( Exception )
                     {
@@ -318,15 +243,13 @@ namespace BlizzetaZero.Kernel
                     }
                 else
                 {
-
                     if ( !File.Exists ( userdb ) )
                     {
                         string Code = ProductKey.GenerateProductKey ( n, c ).ProductID;
                         i.Format ( "Access Code is {0}", ConsoleColor.DarkGreen, Code );
 
-                        System.IO.File.WriteAllText ( Irc.StartupPath + "\\code.esd", Code.ToString () );
+                        System.IO.File.WriteAllText ( Irc.StartupPath + "\\code.esd", Code.ToString ( ) );
                         i.GetChannel ( c ).SendMessage ( string.Format ( "Access Code sent to {0}", i.Owner ) );
-
                     }
                     else
                         i.GetChannel ( c ).SendMessage ( "User Database already exists!!!" );
@@ -337,33 +260,31 @@ namespace BlizzetaZero.Kernel
             // get
             AddCommand ( "get", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-
                 return 0;
             } ) );
 
             // set
             AddCommand ( "set", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                Dictionary<string, Func<int>> subcmd = new Dictionary<string, Func<int>> ();
+                Dictionary<string, Func<int>> subcmd = new Dictionary<string, Func<int>> ( );
 
-
-                subcmd.Add ( "kick", new Func<int> ( () =>
+                subcmd.Add ( "kick", new Func<int> ( ( ) =>
                 {
-                    string val = (o[1] as string).ToLower();
+                    string val = ( o[ 1 ] as string ).ToLower ( );
                     if ( val == "on" || val == "true" )
                     {
                         ignoreKick = false;
                     }
-                    else if (val == "off" || val == "false")
+                    else if ( val == "off" || val == "false" )
                     {
                         ignoreKick = true;
                     }
                     return 0;
                 } ) );
 
-                subcmd.Add ( "say", new Func<int> ( () =>
+                subcmd.Add ( "say", new Func<int> ( ( ) =>
                 {
-                    string val = ( o[1] as string ).ToLower ();
+                    string val = ( o[ 1 ] as string ).ToLower ( );
                     if ( val == "on" || val == "true" )
                     {
                         ignoreSay = false;
@@ -375,9 +296,9 @@ namespace BlizzetaZero.Kernel
                     return 0;
                 } ) );
 
-                subcmd.Add ( "ban", new Func<int> ( () =>
+                subcmd.Add ( "ban", new Func<int> ( ( ) =>
                 {
-                    string val = ( o[1] as string ).ToLower ();
+                    string val = ( o[ 1 ] as string ).ToLower ( );
                     if ( val == "on" || val == "true" )
                     {
                         ignoreBan = false;
@@ -392,29 +313,64 @@ namespace BlizzetaZero.Kernel
                 return 0;
             } ) );
 
+            // help
+            AddCommand ( "help", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
+            {
+                // +help [-mpuv] [command] [subcommand]
+                /*
+                 *  Options:
+                 *      -m | --more         : More Command
+                 *      -p | --permissions  : Permissions Command
+                 *      -u | --usage        : Usage Command
+                 *      -v | --version      : Version Command
+                 */
+
+                return 0;
+            } ) );
+
             // join
             AddCommand ( "join", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                if ( o.Length > 0 )
-                    i.Join ( c, o[0] as string );
-                else
-                    i.Join ( c, string.Empty );
+                bool chanExists = i.Channels.Exists ( new Predicate<Channel> ( ( ch ) =>
+                {
+                    return ch.Name == o[ 0 ] as string;
+                } ) );
 
-                return 0;
+                if ( !chanExists )
+                {
+                    if ( o.Length > 1 )
+                    {
+                        i.Join ( o[ 0 ] as string, o[ 1 ] as string );
+                        return 0;
+                    }
+                    else if ( o.Length > 0 )
+                    {
+                        i.Join ( o[ 0 ] as string, string.Empty );
+                        return 0;
+                    }
+                    else
+                        i.SendMessage ( c, "I can't join without a channel name" );
+                }
+                else
+                {
+                    i.SendMessage ( c, string.Format ( "I'm already in {0}!", o[ 0 ] as string ) );
+                }
+                return -1;
             } ) );
 
             // kick
             AddCommand ( "kick", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                if(!ignoreKick)
-                    i.Raw ( RFC1459.IrcCommands.Kick ( c, o[0] as string, string.Join ( " ", o, 1, o.Length - 1 ) ) );
+                string[] ss = o as string[];
+                if ( !ignoreKick )
+                    i.Raw ( RFC1459.IrcCommands.Kick ( c, o[ 0 ] as string, string.Join ( " ", ss, 1, ss.Length - 1 ) ) );
                 return 0;
             } ) );
 
             // list
             AddCommand ( "list", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                Channel[] chans = i.Channels.ToArray ();
+                Channel[] chans = i.Channels.ToArray ( );
                 i.SendMessage ( n, "I am in these channels:" );
                 foreach ( Channel chan in chans )
                 {
@@ -426,13 +382,12 @@ namespace BlizzetaZero.Kernel
             // me
             AddCommand ( "me", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                Dictionary<string, Func<int>> subcmd = new Dictionary<string, Func<int>> ();
-                XmlDocument xDoc = new XmlDocument ();
+                Dictionary<string, Func<int>> subcmd = new Dictionary<string, Func<int>> ( );
+                XmlDocument xDoc = new XmlDocument ( );
 
-                subcmd.Add ( "add", new Func<int> ( () =>
+                subcmd.Add ( "add", new Func<int> ( ( ) =>
                 {
-
-                    foreach ( User u in ReadUsers () )
+                    foreach ( User u in ReadUsers ( ) )
                     {
                         if ( u.name == n )
                         {
@@ -452,12 +407,12 @@ namespace BlizzetaZero.Kernel
 
                     i.Raw ( RFC1459.IrcCommands.Who ( n, false ) );
 
-                    WhoInfo wi = WhoInfo.GetUser ( i, o[0] as string );
+                    WhoInfo wi = WhoInfo.GetUser ( i, o[ 0 ] as string );
 
                     aUser.Value = wi.Nick;
                     aHost.Value = wi.Host;
                     aPermission.Value = Enum.GetName ( typeof ( Scripts.Permissions ), Scripts.Permissions.User );
-                    aBan.Value = false.ToString ();
+                    aBan.Value = false.ToString ( );
 
                     xUser.Attributes.Append ( aUser );
                     xUser.Attributes.Append ( aHost );
@@ -471,14 +426,14 @@ namespace BlizzetaZero.Kernel
                     return 0;
                 } ) );
 
-                subcmd.Add ( "del", new Func<int> ( () =>
+                subcmd.Add ( "del", new Func<int> ( ( ) =>
                 {
                     xDoc.Load ( userdb );
                     XmlNodeList list = xDoc.SelectNodes ( "/Users/User" );
 
                     foreach ( XmlNode no in list )
                     {
-                        string name = no.Attributes["name"].Value;
+                        string name = no.Attributes[ "name" ].Value;
                         if ( name == n )
                         {
                             i.Format ( "Selected {0}!", ConsoleColor.DarkGreen, name );
@@ -495,7 +450,7 @@ namespace BlizzetaZero.Kernel
                 {
                     if ( System.IO.File.Exists ( userdb ) )
                     {
-                        subcmd[o[0] as string].Invoke ();
+                        subcmd[ o[ 0 ] as string ].Invoke ( );
                     }
                     else
                         i.GetChannel ( c ).SendMessage ( "There is no Database. Use +createdb to send an Access code to Blizzardo1 for a new File." );
@@ -506,7 +461,6 @@ namespace BlizzetaZero.Kernel
                     Console.WriteLine ( ex );
                 }
 
-
                 return 0;
             } ) );
 
@@ -516,35 +470,43 @@ namespace BlizzetaZero.Kernel
             // nick
             AddCommand ( "nick", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                i.Raw ( RFC1459.IrcCommands.Nick ( o[0] as string ) );
+                i.Raw ( RFC1459.IrcCommands.Nick ( o[ 0 ] as string ) );
                 return 0;
             } ) );
 
             // part
             AddCommand ( "part", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                i.Part ( c, string.Join ( " ", o ) );
+                i.Part ( c, string.Join ( " ", o as string[] ) );
                 return 0;
             } ) );
 
             // quit
             AddCommand ( "quit", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                i.Raw ( RFC1459.IrcCommands.Quit ( string.Join ( " ", o ) ) );
+                i.Raw ( RFC1459.IrcCommands.Quit ( string.Join ( " ", o as string[] ) ) );
+                return 0;
+            } ) );
+
+            // raw
+            AddCommand ( "raw", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
+            {
+                i.Raw ( string.Join ( " ", o ) );
                 return 0;
             } ) );
 
             // reboot
             AddCommand ( "reboot", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                System.Diagnostics.Process p = new System.Diagnostics.Process ()
+                System.Diagnostics.Process p = new System.Diagnostics.Process ( )
                 {
-                    StartInfo = new System.Diagnostics.ProcessStartInfo ()
+                    StartInfo = new System.Diagnostics.ProcessStartInfo ( )
                     {
-                        FileName = Environment.CommandLine.Split ( ' ' )[0]
+                        FileName = System.Reflection.Assembly.GetExecutingAssembly ( ).GetName ( ).Name + ".exe"
                     }
                 };
-                p.Start ();
+                i.Disconnect ( "Rebooting!" );
+                p.Start ( );
                 Environment.Exit ( 0 );
 
                 return 0;
@@ -553,22 +515,22 @@ namespace BlizzetaZero.Kernel
             // say
             AddCommand ( "say", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                if(!ignoreSay)
-                    i.GetChannel ( c ).SendMessage ( string.Join ( " ", o ) );
+                if ( !ignoreSay )
+                    i.GetChannel ( c ).SendMessage ( string.Join ( " ", o as string[] ) );
                 return 0;
             } ) );
 
             // version
             AddCommand ( "version", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                Dictionary<string, Func<int>> arguments = new Dictionary<string, Func<int>> ();
-                arguments.Add ( "core", new Func<int> ( () =>
+                Dictionary<string, Func<int>> arguments = new Dictionary<string, Func<int>> ( );
+                arguments.Add ( "core", new Func<int> ( ( ) =>
                 {
                     i.GetChannel ( c ).SendMessage ( string.Format ( "{0}; Core Version {1}", Global.Title, Global.Core ) );
                     return 0;
                 } ) );
 
-                arguments.Add ( "scripts", new Func<int> ( () =>
+                arguments.Add ( "scripts", new Func<int> ( ( ) =>
                 {
                     i.GetChannel ( c ).SendMessage ( string.Format ( "{0}; Scripts Version {1}", Global.Title, Global.Scripts ) );
                     return 0;
@@ -576,7 +538,7 @@ namespace BlizzetaZero.Kernel
 
                 try
                 {
-                    arguments[o[0] as string].Invoke ();
+                    arguments[ o[ 0 ] as string ].Invoke ( );
                 }
                 catch
                 {
@@ -589,41 +551,118 @@ namespace BlizzetaZero.Kernel
             // whois
             AddCommand ( "whois", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                i.Raw ( RFC1459.IrcCommands.Whois ( o[0] as string ) );
+                i.Raw ( RFC1459.IrcCommands.Whois ( o[ 0 ] as string ) );
                 return 0;
             } ) );
         }
 
-        public static string CheckS( string name )
+        public static void ReleaseCommand ( string command )
         {
-            return name.EndsWith ( "s" ) ? name + "'" : name + "'s";
+            IrcReply.FormatMessage ( string.Format ( "Excluding {0}", command ), ConsoleColor.DarkRed );
+            commands.Remove ( command );
         }
 
-        private struct User
+        private static IEnumerable<User> ReadUsers ( )
         {
-            public string name;
-            public string host;
-            public string permission;
-            public string banned;
-
-        }
-
-        private static IEnumerable<User> ReadUsers()
-        {
-            XmlDocument doc = new XmlDocument ();
+            XmlDocument doc = new XmlDocument ( );
             doc.Load ( userdb );
 
             XmlNodeList list = doc.SelectNodes ( "/Users/User" );
-            List<User> users = new List<User> ();
+            List<User> users = new List<User> ( );
 
             foreach ( XmlNode n in list )
             {
-                string name = n.Attributes["name"].Value, host = n.Attributes["host"].Value, banned = n.Attributes["banned"].Value, permission = n.Attributes["permission"].Value;
+                string name = n.Attributes[ "name" ].Value, host = n.Attributes[ "host" ].Value, banned = n.Attributes[ "banned" ].Value, permission = n.Attributes[ "permission" ].Value;
                 //Irc.Format("Name: {0}, Host: {1}, Banned: {2}, Permission: {3}", ConsoleColor.Green, name, host, banned, permission);
                 users.Add ( new User { name = name, host = host, banned = banned, permission = permission } );
             }
 
-            return users.ToArray ();
+            return users.ToArray ( );
+        }
+
+        private struct User
+        {
+            public string banned;
+            public string host;
+            public string name;
+            public string permission;
+        }
+    }
+
+    public class ProductKey
+    {
+        private string productID;
+
+        public string ProductID { get { return productID; } }
+
+        public static bool ActivateKey ( string key, out string[] decrypted )
+        {
+            string[] data = KeyCipher.Decrypt ( key, "blizzetazero70iamopensourcemadebyblizzardo1dontabuse(c)2014blizzardo1" ).Split ( ':' );
+            if ( data.Length == 3 )
+            {
+                IrcReply.FormatMessage ( string.Format ( "Nick: {0}\r\nChannel: {1}\r\nDate: {2:dddd MMMM dd, yyyy} at {2:HH:mm:ss}", data[ 0 ], data[ 1 ], DateTime.FromBinary ( long.Parse ( data[ 2 ] ) ) ), ConsoleColor.DarkGray, true );
+                decrypted = data;
+                return true;
+            }
+
+            decrypted = null;
+            return false;
+        }
+
+        public static ProductKey GenerateProductKey ( string nick, string channel )
+        {
+            DateTime dt = DateTime.Now;
+            string data = string.Format ( "{0}:{1}:{2}", nick, channel, dt.ToBinary ( ) );
+
+            return new ProductKey ( ) { productID = KeyCipher.Encrypt ( data, "blizzetazero70iamopensourcemadebyblizzardo1dontabuse(c)2014blizzardo1" ) };
+        }
+
+        public static class KeyCipher
+        {
+            // This constant string is used as a "salt" value for the PasswordDeriveBytes function calls.
+            // This size of the IV (in bytes) must = (keysize / 8).  Default keysize is 256, so the IV must be
+            // 32 bytes long.  Using a 16 character string here gives us 32 bytes when converted to a byte array.
+            private const string initVector = "tu89geji340t89u2";
+
+            // This constant is used to determine the keysize of the encryption algorithm.
+            private const int keysize = 256;
+
+            public static string Decrypt ( string cipherText, string passPhrase )
+            {
+                byte[] initVectorBytes = Encoding.ASCII.GetBytes ( initVector );
+                byte[] cipherTextBytes = Convert.FromBase64String ( cipherText );
+                PasswordDeriveBytes password = new PasswordDeriveBytes ( passPhrase, null );
+                byte[] keyBytes = password.GetBytes ( keysize / 8 );
+                RijndaelManaged symmetricKey = new RijndaelManaged ( );
+                symmetricKey.Mode = CipherMode.CBC;
+                ICryptoTransform decryptor = symmetricKey.CreateDecryptor ( keyBytes, initVectorBytes );
+                MemoryStream memoryStream = new MemoryStream ( cipherTextBytes );
+                CryptoStream cryptoStream = new CryptoStream ( memoryStream, decryptor, CryptoStreamMode.Read );
+                byte[] plainTextBytes = new byte[ cipherTextBytes.Length ];
+                int decryptedByteCount = cryptoStream.Read ( plainTextBytes, 0, plainTextBytes.Length );
+                memoryStream.Close ( );
+                cryptoStream.Close ( );
+                return Encoding.UTF8.GetString ( plainTextBytes, 0, decryptedByteCount );
+            }
+
+            public static string Encrypt ( string plainText, string passPhrase )
+            {
+                byte[] initVectorBytes = Encoding.UTF8.GetBytes ( initVector );
+                byte[] plainTextBytes = Encoding.UTF8.GetBytes ( plainText );
+                PasswordDeriveBytes password = new PasswordDeriveBytes ( passPhrase, null );
+                byte[] keyBytes = password.GetBytes ( keysize / 8 );
+                RijndaelManaged symmetricKey = new RijndaelManaged ( );
+                symmetricKey.Mode = CipherMode.CBC;
+                ICryptoTransform encryptor = symmetricKey.CreateEncryptor ( keyBytes, initVectorBytes );
+                MemoryStream memoryStream = new MemoryStream ( );
+                CryptoStream cryptoStream = new CryptoStream ( memoryStream, encryptor, CryptoStreamMode.Write );
+                cryptoStream.Write ( plainTextBytes, 0, plainTextBytes.Length );
+                cryptoStream.FlushFinalBlock ( );
+                byte[] cipherTextBytes = memoryStream.ToArray ( );
+                memoryStream.Close ( );
+                cryptoStream.Close ( );
+                return Convert.ToBase64String ( cipherTextBytes );
+            }
         }
     }
 }

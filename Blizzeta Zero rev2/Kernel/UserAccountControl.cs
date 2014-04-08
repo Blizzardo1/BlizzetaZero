@@ -14,34 +14,37 @@
 |*  You should have received a copy of the GNU General Public License       *|
 |*  along with this program.  If not, see <http://www.gnu.org/licenses/>.   *|
 \*__________________________________________________________________________*/
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Xml;
 
 namespace BlizzetaZero.Kernel
 {
     using Scripts;
+
     public class uac
     {
         private static Irc i;
-        public static Permissions GetPermission( string Nick, Irc s )
+
+        public static Permissions GetPermission ( string Nick, Irc s )
         {
             i = s;
-            User[] users = ReadUsers ();
+            User[] users = ReadUsers ( );
             var availablenicks = new List<string> ( users.Select ( ( U ) => U.Name ) );
 
             if ( availablenicks.Contains ( Nick ) )
                 foreach ( User user in users.Where ( user => user.Name == Nick ) )
                 {
+                    User u = getUser ( Nick );
                     try
                     {
-                        if ( user.Host ==  getUser(Nick).Host)
+                        if ( user.Host == u.Host )
                         {
                             if ( !bool.Parse ( user.Banned ) )
                             {
-                                return ( Permissions )Enum.Parse ( typeof ( Permissions ), user.Permission );
+                                return ( Permissions ) Enum.Parse ( typeof ( Permissions ), user.Permission );
                             }
                             else
                             {
@@ -50,10 +53,18 @@ namespace BlizzetaZero.Kernel
                         }
                         else
                         {
-                            s.SendMessage ( Nick,
+                            s.Format (
+                                "Host Mismatch on user \"{0}\" with host \"{1}\". Real host is \"{2}\". Using Guest permissions.",
+                                ConsoleColor.DarkRed,
+                                user.Name,
+                                user.Host,
+                                u.Host
+                                );
+                            /*s.SendMessage ( Nick,
                                           string.Format (
                                               "You are {0}, however the host I have on record does not match! If you find this in error, please contact {1} for further assistance.",
                                               Nick, s.Owner ) );
+                                                                */
                         }
                     }
                     catch ( Exception ex )
@@ -65,24 +76,24 @@ namespace BlizzetaZero.Kernel
             return Permissions.Guest;
         }
 
-        private static User[] ReadUsers()
+        private static User getUser ( string name )
         {
-            var doc = new XmlDocument ();
+            Kernel.User u = Kernel.User.GetUser ( i, name );
+            return new User ( ) { Name = u.Nick, Host = u.Host };
+        }
+
+        private static User[] ReadUsers ( )
+        {
+            var doc = new XmlDocument ( );
             doc.Load ( Irc.StartupPath + "\\User.db" );
 
             XmlNodeList list = doc.SelectNodes ( "/Users/User" );
-            var users = new List<User> ();
+            var users = new List<User> ( );
 
             if ( list != null )
-                users.AddRange ( from n in ( from XmlNode n in list where n.Attributes != null select n ) where n.Attributes != null let name = n.Attributes["name"].Value let host = n.Attributes["host"].Value let banned = n.Attributes["banned"].Value let permission = n.Attributes["permission"].Value select new User { Name = name, Host = host, Banned = banned, Permission = permission } );
+                users.AddRange ( from n in ( from XmlNode n in list where n.Attributes != null select n ) where n.Attributes != null let name = n.Attributes[ "name" ].Value let host = n.Attributes[ "host" ].Value let banned = n.Attributes[ "banned" ].Value let permission = n.Attributes[ "permission" ].Value select new User { Name = name, Host = host, Banned = banned, Permission = permission } );
 
-            return users.ToArray ();
-        }
-
-        private static User getUser( string name )
-        {
-            Kernel.User u = Kernel.User.GetUser ( i, name );
-            return new User () { Name = u.Nick, Host = u.Host };
+            return users.ToArray ( );
         }
 
         private struct User

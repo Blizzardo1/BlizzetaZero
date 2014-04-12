@@ -477,7 +477,9 @@ namespace BlizzetaZero.Kernel
             // part
             AddCommand ( "part", new Func<Irc, string, string, object[], int> ( ( i, c, n, o ) =>
             {
-                i.Part ( c, string.Join ( " ", o as string[] ) );
+                string[] format = o as string[];
+                string channel = format[ 0 ];
+                i.Part ( channel, string.Join ( " ", format, 1, format.Length - 1 ) );
                 return 0;
             } ) );
 

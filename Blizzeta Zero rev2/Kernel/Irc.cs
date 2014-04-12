@@ -202,7 +202,7 @@ namespace BlizzetaZero.Kernel
         public event ZeroHandler OnSetMode;
 
         public event ChannelTopicHandler OnTopicChange;
-
+        
         #endregion Events
 
         public void ChangeNick ( string newnick )
@@ -337,6 +337,13 @@ namespace BlizzetaZero.Kernel
             GetChannel ( channel ).Kick ( nick, reason );
         }
 
+        private void dbwl ( string format, params object[] args )
+        {
+            dbg.Indent ( );
+            dbg.WriteLine ( format, args );
+            dbg.Unindent ( );
+        }
+
         /// <summary>
         /// Listen on an infinite loop
         /// </summary>
@@ -372,7 +379,7 @@ namespace BlizzetaZero.Kernel
 
                             if ( string.IsNullOrEmpty ( this.server ) )
                                 this.server = this.messagearray[ 0 ];
-                            dbg.WriteLine ( string.Format ( "Server Reply: {0}", s ) );
+                            dbwl ("Server Reply: {0}", s );
                             /*
                                 at System.String.Join(String separator, String[] value, Int32 startIndex, Int32 count)
                                 at BlizzetaZero.Kernel.Extensions.NonZero(String[] arr) in g:\BreakerDev Suite 2012\Blizzeta Zero rev2\Blizzeta Zero rev2\Kernel\Extensions.cs:line 34
@@ -386,12 +393,18 @@ namespace BlizzetaZero.Kernel
                             {
                                 u = ( ( !string.IsNullOrEmpty ( prefix ) ) ? new User ( prefix ) : null );
                                 c = ( ( parameters[ 0 ].StartsWith ( "#" ) ) ? GetChannel ( parameters[ 0 ] ) : null );
+                                if(u != null)
+                                    dbwl ( "User Reply: {0}", u.Nick );
+                                if(c != null)
+                                    dbwl ( "Channel Reply: {0}", c.Name );
                             }
-                            catch { }
+                            catch ( Exception ) { }
 
                             if ( prefix == this.server )
                             {
                                 if ( Enum.TryParse<ReplyCode> ( command, out code ) )
+                                {
+                                    dbwl ( "Prefix is {0}, Command is {1}, Code is {2}", prefix, command, code );
                                     switch ( code )
                                     {
                                         case ReplyCode.RPL_TOPIC: Console.WriteLine (
@@ -443,6 +456,7 @@ namespace BlizzetaZero.Kernel
                                             Format ( this.message, ConsoleColor.DarkMagenta );
                                             break;
                                     }
+                                }
                                 else
                                 {
                                     Console.WriteLine ( this.message );
@@ -457,6 +471,7 @@ namespace BlizzetaZero.Kernel
                             }
                             else
                             {
+                                dbwl ( "Command is {0}, Parameters are {1}", command, paramsmsg );
                                 switch ( command )
                                 {
                                     // :Prefix Command :Params
@@ -552,7 +567,9 @@ namespace BlizzetaZero.Kernel
 
         public void Part ( string channel, string reason = "Parted the channel" )
         {
-            GetChannel ( channel ).Part ( reason );
+            Channel c = GetChannel ( channel );
+            c.Part ( reason );
+            Channels.Remove ( c );
         }
 
         public void Raw ( string message, params object[] args )

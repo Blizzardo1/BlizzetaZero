@@ -356,6 +356,19 @@ namespace BlizzetaZero.Kernel
                 OnPrivateMessage += Irc_OnPrivateMessage;
                 OnPrivateNotice += Irc_OnPrivateNotice;
                 OnPrivateAction += Irc_OnPrivateAction;
+                OnChannelJoin += Irc_OnChannelJoin;
+                OnChannelKick += Irc_OnChannelKick;
+                OnChannelMode += Irc_OnChannelMode;
+                OnChannelMode += Irc_OnChannelMode;
+                OnChannelPart += Irc_OnChannelPart;
+                OnChannelUserList += Irc_OnChannelUserList;
+                OnNickChange += Irc_OnNickChange;
+                OnPublicAction += Irc_OnPublicAction;
+                OnPublicMessage += Irc_OnPublicMessage;
+                OnPublicNotice += Irc_OnPublicNotice;
+                OnSendToChannel += Irc_OnSendToChannel;
+                OnServerQuit += Irc_OnServerQuit;
+                OnTopicChange += Irc_OnTopicChange;
 
                 while ( this.client.Connected )
                 {
@@ -641,6 +654,67 @@ namespace BlizzetaZero.Kernel
         private void Irc_OnPrivateNotice ( User from, string to, string message )
         {
             Format ( "<{0}> => {1} ", ConsoleColor.DarkCyan, from.Nick, message );
+        }
+
+
+        private void Irc_OnChannelJoin ( User from, Channel channel, string target, string message )
+        {
+            channel.DisplayChannelJoin ( from, target, message );
+        }
+
+        private void Irc_OnChannelKick ( User from, Channel channel, string target, string message )
+        {
+            channel.DisplayChannelKick ( from, target, message );
+        }
+
+        private void Irc_OnChannelMode ( User from, Channel channel, string target, string message )
+        {
+            channel.DisplayChannelMode ( from, target, message );
+        }
+
+        private void Irc_OnChannelPart ( User from, Channel channel, string target, string message )
+        {
+            channel.DisplayChannelPart ( from, target, message );
+        }
+
+        private void Irc_OnChannelUserList ( Channel channel, string[] list )
+        {
+            channel.RecieveChannelUserList ( list );
+        }
+
+        private void Irc_OnNickChange ( User from, string newnick )
+        {
+            IrcReply.FormatMessage ( string.Format ( "{0} is now known as {1}", from.Nick, newnick ), ConsoleColor.DarkGray );
+        }
+
+        private void Irc_OnPublicAction ( User from, string to, string message )
+        {
+            GetChannel ( to ).RecievePublicAction ( from, to, message );
+        }
+
+        private void Irc_OnPublicMessage ( User from, string to, string message )
+        {
+            GetChannel ( to ).RecievePublicMessage ( from, to, message );
+        }
+
+        private void Irc_OnPublicNotice ( User from, string to, string message )
+        {
+            GetChannel ( to ).RecievePublicNotice ( from, to, message );
+        }
+
+        private void Irc_OnSendToChannel ( string to, string message )
+        {
+            GetChannel ( to ).SendToChannel ( to, message );
+        }
+
+        private void Irc_OnServerQuit ( User from, Channel channel, string target, string message )
+        {
+            channel.DisplayQuit ( from, target, message );
+        }
+
+        private void Irc_OnTopicChange ( User from, Channel channel, string newtopic )
+        {
+            channel.ChangeTopic ( from, newtopic );
         }
 
         private void KillItWithFire ( )
